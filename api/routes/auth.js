@@ -3,17 +3,27 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../keys');
-const requireLogin = require('../middleware/requireLogin');
 const nodemailer = require('nodemailer');
 const sendgridTransport = require('nodemailer-sendgrid-transport');
+const { username } = require('../keys');
+const { password } = require('../keys');
 
 // const transporter = nodemailer.createTransport(sendgridTransport({
-//     auth: {
-//         api_key: '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'
+//     auth:{
+//         api_key: "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"
 //     }
 // }));
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: username,
+        pass: password
+    }
+});
 
 router.post('/signup', (req, res) => {
     // console.log(req.body);
@@ -23,7 +33,7 @@ router.post('/signup', (req, res) => {
         return res.status(422).json({errors: 'Please enter all field!'});
     }
     User.findOne({email: email})
-        .then( (saveUser) => {
+        .then((saveUser) => {
             if(saveUser) {
                 return res.status(422).json({ status: false, errors: "User already exists with that email!"})
             }
@@ -37,23 +47,26 @@ router.post('/signup', (req, res) => {
                     })
         
                     user.save()
-                        .then(user => {
-                            // transporter.sendMail({ //bug
-                            //         to:user.email,
-                            //         from:"support-reply@insta.com",
-                            //         subject:"SignUp success",
-                            //         html:"<h1>Welcome to Instagram</h1>"
-                            // })
-                            res.json({ status: 200, message: "Saved successfully!"})
+                    .then(user => {
+                        transporter.sendMail({ //bug    
+                            to:user.email,
+                            from:"no-reply@insta.com",
+                            subject:"SignUp success",
+                            html:`<h1>Welcome to Instagram</h1>`
                         })
-                        .catch(err => {
-                            console.log(err);
-                        })
-                })
-                .catch(err =>{
-                    console.log(err);
+                        res.json({ status: 200, message: "Saved successfully!"})
                     })
-                })
+                    .catch(err => {
+                        console.log(err);
+                    })
+                }) 
+                // .catch(err =>{
+                //     console.log(err);
+                // })
+        })
+        .catch(err => {
+            console.log(err);
+        })
 });
 
 router.post('/signin', (req, res) => {
@@ -84,8 +97,35 @@ router.post('/signin', (req, res) => {
 });
 
 //Forgot Password (Gửi email veryfy -> check rồi nhập mật khẩu mới)
-// router.post('/forgotPassword', (req, res) => {
-    
-// });
+router.post('/reset-password', (req, res) => {
+    crypto.randomBytes(32, (err, buffer) => {
+        if(err) {
+            console.log(err);
+        }
+
+        const token = buffer.toString("hex")
+        User.findOne({email: req.body.email})
+            .then(user => {
+                if(!user) {
+                    return res.status(422).json({error: "User dont exists with that email"})
+                }
+                user.resetToken = token
+                user.expireToken = Date.now() + 3600000
+                user.save()
+                    .then((result) => {
+                        transporter.sendMail({
+                            to:user.email,
+                            from: "no-reply@insta.com",
+                            subject: "Reset password",
+                            html: `
+                            <p>You requested for password reset</p>
+                            <h5>Click in this <a href="http://localhost:3000/reset/${token}">Link</a>to reset password</h5>
+                            `
+                        })
+                        res.json({status: 200, message: "Check your email"})
+                    })
+            })
+    })
+});
 
 module.exports = router;
