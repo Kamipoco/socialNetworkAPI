@@ -8,6 +8,13 @@ const helmet = require('helmet');
 const PORT = 5000;
 const { MongoUrl } = require('./keys');
 
+var http = require('http').Server(app);
+var io = require('socket.io')(http,{
+    cors: {
+        origin: '*',
+    }
+  });
+
 // var corsOptions = {
 //     origin: "http://localhost:5000"
 //   };
@@ -39,6 +46,15 @@ app.use(require('./routes/auth')); //định tuyến đường đi cho các API
 app.use(require('./routes/post'));
 app.use(require('./routes/user'));
 
-app.listen(PORT, () => { 
-    console.log('Server is running on', PORT);
-});
+const onConnection = (socket) => {
+    require('./routes/message')(io, socket);
+  }
+  
+  io.on("connection", onConnection);
+
+// app.listen(PORT, () => { 
+//     console.log('Server is running on', PORT);
+// });
+var server = http.listen(PORT, () => {
+    console.log('server is running on port', server.address().port);
+  });
