@@ -47,7 +47,7 @@ app.use(require('./routes/post'));
 app.use(require('./routes/user'));
 
 const onConnection = (socket) => {
-    require('./routes/message')(io, socket);
+    require('./socket.io/messages')(io, socket);
   }
   
   io.on("connection", onConnection);
