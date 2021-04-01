@@ -57,8 +57,10 @@
     }
 
     function sendMessage(message){
-      socket.emit('new_message', message);
-      // $.post('http://localhost:3000/messages', message)
+      socket.emit('new_message',message, (data)=>{  
+      	addMessages(message);   	
+      	console.log("send message " +data);
+      });
     }
 </script>
 </body>
